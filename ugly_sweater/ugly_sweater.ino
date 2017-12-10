@@ -84,7 +84,7 @@ void setup() {
 }
 
 void loop() {
-    if (Serial.available() > 0) {
+    if (Serial.available()) {
         char ch = Serial.read();
 
         // Print What comes in...
