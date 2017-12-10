@@ -41,6 +41,7 @@ void xmasloop(HardwareSerial &rserial, int wait)
     rserial.println(wait);
 }
 
+// Parses the incoming command for what to do...
 void parseCommand(HardwareSerial &rserial, String com)
 {
     String part1;
