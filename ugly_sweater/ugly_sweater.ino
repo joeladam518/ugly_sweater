@@ -7,16 +7,23 @@
 
 // Pins:
 
-static const int NEO_PIN = 6;
+static const int NEO_PIN = 5;
 
 // Global Variables:
 
+// Number of neopixels
+static const int NUM_NEOPIXELS = 3;
+
+// Initialize the NeoPixel Object // NEO_KHZ400
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUM_NEOPIXELS, NEO_PIN, NEO_GRB + NEO_KHZ800);
+
 // To hold commands coming in through serial
 String command;
-// Number of neopixels
-static const int NUM_NEOPIXELS = 1;
-// Initialize the NeoPixel Object 
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUM_NEOPIXELS, NEO_PIN, NEO_GRB + NEO_KHZ400);
+
+// LED Color Pin Enum
+static const int R = 0;
+static const int G = 1;
+static const int B = 2;
 
 // Color arrays
 int off[3] = { 0, 0, 0 };
@@ -28,7 +35,22 @@ int cyan[3] = { 0, 255, 255 };
 int magenta[3] = { 255, 0, 255 };
 int yellow[3] = { 255, 255, 0 };
 
+int currentcolor[3] = { 0, 0, 0 };
+
 // Functions:
+
+void setEveryPixelsColor(int color[3]) 
+{
+    for (int i = 0; i < NUM_NEOPIXELS; i++) {
+        // pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
+        pixels.setPixelColor(i, pixels.Color(color[R], color[G], color[B]));
+        pixels.show(); // This sends the updated pixel color to the hardware.
+    }
+
+    currentcolor[R] = color[R];
+    currentcolor[G] = color[G];
+    currentcolor[B] = color[B];
+}
 
 // Set the color by given name.
 // Should I just set the values directly? 
@@ -51,39 +73,39 @@ int setColor(HardwareSerial &rserial, String color, float percentage)
     }
 
     if (color.equals("on")) {
-        color_array[0] = on[0];
-        color_array[1] = on[1];
-        color_array[2] = on[2];
+        color_array[R] = on[R];
+        color_array[G] = on[G];
+        color_array[B] = on[B];
     } else if (color.equals("off")) {
-        color_array[0] = off[0];
-        color_array[1] = off[1];
-        color_array[2] = off[2];
+        color_array[R] = off[R];
+        color_array[G] = off[G];
+        color_array[B] = off[B];
     } else if (color.equals("red")) {
-        color_array[0] = red[0] * percentage;
-        color_array[1] = red[1] * percentage;
-        color_array[2] = red[2] * percentage;
+        color_array[R] = red[R] * percentage;
+        color_array[G] = red[G] * percentage;
+        color_array[B] = red[B] * percentage;
     } else if (color.equals("green")) {
-        color_array[0] = green[0] * percentage;
-        color_array[1] = green[1] * percentage;
-        color_array[2] = green[2] * percentage;
+        color_array[R] = green[R] * percentage;
+        color_array[G] = green[G] * percentage;
+        color_array[B] = green[B] * percentage;
     } else if (color.equals("blue")) {
-        color_array[0] = blue[0] * percentage;
-        color_array[1] = blue[1] * percentage;
-        color_array[2] = blue[2] * percentage;
+        color_array[R] = blue[R] * percentage;
+        color_array[G] = blue[G] * percentage;
+        color_array[B] = blue[B] * percentage;
     } else if (color.equals("cyan")) {
-        color_array[0] = cyan[0] * percentage;
-        color_array[1] = cyan[1] * percentage;
-        color_array[2] = cyan[2] * percentage;
+        color_array[R] = cyan[R] * percentage;
+        color_array[G] = cyan[G] * percentage;
+        color_array[B] = cyan[B] * percentage;
     } else if (color.equals("magenta")) {
-        color_array[0] = magenta[0] * percentage;
-        color_array[1] = magenta[1] * percentage;
-        color_array[2] = magenta[2] * percentage;
+        color_array[R] = magenta[R] * percentage;
+        color_array[G] = magenta[G] * percentage;
+        color_array[B] = magenta[B] * percentage;
     } else if (color.equals("yellow")) {
-        color_array[0] = yellow[0] * percentage;
-        color_array[1] = yellow[1] * percentage;
-        color_array[2] = yellow[2] * percentage;
+        color_array[R] = yellow[R] * percentage;
+        color_array[G] = yellow[G] * percentage;
+        color_array[B] = yellow[B] * percentage;
     } else {
-        rserial.println("Color Not recognized...");
+        rserial.println("color_array Not recognized...");
         return 0;
     }
 
@@ -93,15 +115,74 @@ int setColor(HardwareSerial &rserial, String color, float percentage)
     rserial.print("color_array[2] = "); rserial.println(color_array[2]);
     rserial.println("");
 
-    for (int i = 0; i < NUM_NEOPIXELS; i++) {
-        // pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
-        pixels.setPixelColor(i, pixels.Color(color_array[0], color_array[1], color_array[2]));
-        // This sends the updated pixel color to the hardware.
-        pixels.show();
-    }
+    setEveryPixelsColor(color_array);
 
     return 1;
 }
+
+int calculateStep(int prevValue, int endValue) 
+{
+    // What's the overall gap?
+    int step = endValue - prevValue;
+    // If its non-zero, divide by 1020
+    if (step) {             
+        step = 1020 / step;
+    }
+    
+    return step;
+}
+
+int calculateVal(int step, int val, int i) 
+{
+    // If step is non-zero and its time to change a value,
+    if ((step) && i % step == 0) {  
+        if (step > 0) { // Increment the value if step is positive...
+            val += 1;
+        } else if (step < 0) { // Or decrement it if step is negative
+            val -= 1;
+        }
+    }
+
+    // Defensive driving: make sure val stays in the range 0-255
+    if (val > 255) {
+        val = 255;
+    } else if (val < 0) {
+        val = 0;
+    }
+
+    return val;
+}
+
+// Cross fade lighting 
+void crossFade(int color[3], int wait) 
+{
+    int colorVal[3];
+
+    // Convert to 0-255
+    // int rVal = (color[R] * 255) / 100;
+    // int gVal = (color[G] * 255) / 100;
+    // int bVal = (color[B] * 255) / 100;
+    int rVal = color[R];
+    int gVal = color[G];
+    int bVal = color[B];
+
+    int stepR = calculateStep(currentcolor[R], rVal);
+    int stepG = calculateStep(currentcolor[G], gVal);
+    int stepB = calculateStep(currentcolor[B], bVal);
+
+    for (int i = 0; i <= 1020; i++) {
+        colorVal[R] = calculateVal(stepR, colorVal[R], i);
+        colorVal[G] = calculateVal(stepG, colorVal[G], i);
+        colorVal[B] = calculateVal(stepB, colorVal[B], i);
+
+        setEveryPixelsColor(colorVal); 
+
+        delay(wait);
+    }
+
+    setEveryPixelsColor(colorVal);
+    delay(1);
+} 
 
 // Loop between red and green. 
 // "wait" slows the Loop down.
@@ -111,6 +192,19 @@ int xmasloop(HardwareSerial &rserial, int wait)
     rserial.print("wait = "); rserial.println(wait);
     rserial.println("");
 
+    int color[3];
+
+    setEveryPixelsColor(off);
+
+    crossFade(red, wait);
+
+    for (int i = 0; i < 3; i++) {
+        crossFade(green, wait);
+        crossFade(red, wait);
+    }
+
+    crossFade(off, wait);
+   
     return 1;
 }
 
