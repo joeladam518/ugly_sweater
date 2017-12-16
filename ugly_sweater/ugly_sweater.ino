@@ -7,12 +7,12 @@
 
 // Pins:
 
-static const int NEO_PIN = 5;
+static const int NEO_PIN = 7;
 
 // Global Variables:
 
 // Number of neopixels
-static const int NUM_NEOPIXELS = 3;
+static const int NUM_NEOPIXELS = 1;
 
 // Initialize the NeoPixel Object // NEO_KHZ400
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUM_NEOPIXELS, NEO_PIN, NEO_GRB + NEO_KHZ800);
